@@ -162,6 +162,8 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ onRSVPSubmitted }) => {
       message: message.trim() || undefined
     };
 
+    console.log("Submitting payload:", JSON.stringify(payload));
+    
     try {
       const response = await fetch('/api/rsvp', {
         method: 'POST',

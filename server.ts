@@ -133,9 +133,11 @@ async function startServer() {
 
   // Submit or update RSVP
   app.post("/api/rsvp", (req, res) => {
+    console.log("RSVP Submission received:", JSON.stringify(req.body, null, 2));
     const { guestName, attending, hasCompanions, companions, phone, message } = req.body;
 
     if (!guestName || typeof guestName !== "string" || !guestName.trim()) {
+      console.log("Validation failed: guestName is missing or invalid");
       return res.status(400).json({ error: "Nome completo é obrigatório." });
     }
 
