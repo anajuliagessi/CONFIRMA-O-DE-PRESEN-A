@@ -1,0 +1,6 @@
+{
+  "name": "Formatura Ana Julia - Confirmação de Presença",
+  "description": "Landing page interativa e elegante de confirmação de presença para a festa de formatura da Ana Julia, com design vibrante em aquarela rosa e laranja e painel da anfitriã.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,123 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Montserrat', sans-serif;
+    background-color: #FFF9F7;
+    color: #2D2328;
+  }
+}
+
+.font-serif {
+  font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+}
+
+.font-display {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+.font-script {
+  font-family: 'Alex Brush', cursive;
+}
+
+.font-body {
+  font-family: 'Montserrat', sans-serif;
+}
+
+/* Vibrant Pink & Orange Watercolor Palette */
+.magenta-text {
+  color: #E11D48;
+}
+
+.magenta-bg {
+  background-color: #E11D48;
+}
+
+.orange-text {
+  color: #EA580C;
+}
+
+.orange-bg {
+  background-color: #F97316;
+}
+
+.sunset-gradient-bg {
+  background: linear-gradient(135deg, #FF1493 0%, #FF5E00 100%);
+}
+
+.sunset-gradient-text {
+  background: linear-gradient(135deg, #FF1493 0%, #FF5E00 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.soft-border {
+  border: 1px solid rgba(255, 78, 120, 0.2);
+}
+
+.soft-border-orange {
+  border: 1px solid rgba(255, 122, 0, 0.2);
+}
+
+.watercolor-blob {
+  filter: blur(55px);
+  opacity: 0.5;
+  border-radius: 50%;
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.watercolor-blob-vibrant {
+  filter: blur(60px);
+  opacity: 0.65;
+  border-radius: 45% 55% 60% 40% / 50% 45% 55% 50%;
+  position: absolute;
+  z-index: 0;
+  pointer-events: none;
+}
+
+@keyframes breeze {
+  0%, 100% {
+    transform: rotate(0deg) translateY(0px) scale(1);
+  }
+  50% {
+    transform: rotate(2.5deg) translateY(-4px) scale(1.02);
+  }
+}
+
+@keyframes breeze-reverse {
+  0%, 100% {
+    transform: rotate(0deg) translateY(0px) scale(1);
+  }
+  50% {
+    transform: rotate(-2.5deg) translateY(-3px) scale(0.98);
+  }
+}
+
+@keyframes pulse-watercolor {
+  0%, 100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.05);
+  }
+}
+
+.animate-breeze {
+  animation: breeze 6s ease-in-out infinite;
+}
+
+.animate-breeze-slow {
+  animation: breeze 8.5s ease-in-out infinite;
+}
+
+.animate-breeze-reverse {
+  animation: breeze-reverse 7s ease-in-out infinite;
+}
+
+.animate-watercolor-pulse {
+  animation: pulse-watercolor 8s ease-in-out infinite;
+}
