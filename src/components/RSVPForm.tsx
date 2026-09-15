@@ -164,8 +164,11 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ onRSVPSubmitted }) => {
 
     console.log("Submitting payload:", JSON.stringify(payload));
     
+    // Usa a variável VITE_API_BASE_URL se estiver definida, caso contrário assume o caminho relativo
+    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+    
     try {
-      const response = await fetch('/api/rsvp', {
+      const response = await fetch(`${API_BASE_URL}/api/rsvp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
