@@ -260,7 +260,7 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ onRSVPSubmitted }) => {
   };
 
   return (
-    <section id="confirmar" className="relative w-full py-12 px-4 sm:px-6 scroll-mt-6">
+    <section id="rsvp-section" className="relative w-full py-12 px-4 sm:px-6 scroll-mt-6">
       <div className="max-w-2xl mx-auto">
         
         {/* Section Header */}

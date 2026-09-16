@@ -15,7 +15,7 @@ export default function App() {
   const [lastSubmittedRSVP, setLastSubmittedRSVP] = useState<RSVP | null>(null);
 
   const scrollToRSVP = () => {
-    const el = document.getElementById('confirmar');
+    const el = document.getElementById('rsvp-section');
     if (el) {
       el.scrollIntoView({ behavior: 'smooth' });
     }
