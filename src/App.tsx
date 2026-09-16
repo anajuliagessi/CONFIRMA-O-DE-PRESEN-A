@@ -77,11 +77,11 @@ export default function App() {
         {/* 1. Hero Opening Section */}
         <HeroSection />
 
-        {/* 2. Countdown Timer */}
-        <CountdownTimer />
-
-        {/* 3. RSVP Interactive Form (Core Functionality) */}
+        {/* 2. RSVP Interactive Form (Core Functionality) */}
         <RSVPForm onRSVPSubmitted={(rsvp) => setLastSubmittedRSVP(rsvp)} />
+
+        {/* 3. Countdown Timer */}
+        <CountdownTimer />
 
         {/* 4. Informações da Festa */}
         <EventInfo />

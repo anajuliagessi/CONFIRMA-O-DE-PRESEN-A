@@ -3,7 +3,7 @@ import { Heart, Sparkles, Calendar, MapPin, ArrowDown } from 'lucide-react';
 
 export const HeroSection: React.FC = () => {
   const scrollToRSVP = () => {
-    const el = document.getElementById('confirmar');
+    const el = document.getElementById('rsvp-section');
     if (el) {
       el.scrollIntoView({ behavior: 'smooth' });
     }
