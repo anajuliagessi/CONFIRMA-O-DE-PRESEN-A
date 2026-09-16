@@ -1,7 +1,17 @@
 import express from "express";
 import path from "path";
-import fs from "fs";
 import { createServer as createViteServer } from "vite";
+import { initializeApp } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import firebaseConfig from "./firebase-applet-config.json";
+
+// Initialize Firebase Admin
+const app = initializeApp({
+  projectId: firebaseConfig.projectId,
+});
+
+const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+const rsvpCollection = db.collection('rsvps');
 
 interface RSVPRecord {
   id: string;
@@ -15,74 +25,6 @@ interface RSVPRecord {
   message?: string;
 }
 
-const DATA_DIR = path.join(process.cwd(), "data");
-const DATA_FILE = path.join(DATA_DIR, "rsvps.json");
-
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  try {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  } catch (e) {
-    console.error("Failed to create data directory:", e);
-  }
-}
-
-// Initial seed data if file doesn't exist
-const INITIAL_RSVPS: RSVPRecord[] = [
-  {
-    id: "rsvp-1",
-    guestName: "Carla Silveira Gessi",
-    attending: true,
-    hasCompanions: true,
-    companions: ["Roberto Gessi", "Lucas Gessi"],
-    createdAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000 * 2).toISOString(),
-    message: "Muito orgulho de você, minha querida! Estaremos lá com certeza!"
-  },
-  {
-    id: "rsvp-2",
-    guestName: "Mariana Vasconcelos",
-    attending: true,
-    hasCompanions: false,
-    companions: [],
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    updatedAt: new Date(Date.now() - 86400000).toISOString(),
-    message: "Parabéns amiga linda!! Não perco por nada!"
-  },
-  {
-    id: "rsvp-3",
-    guestName: "Felipe Andrade",
-    attending: true,
-    hasCompanions: true,
-    companions: ["Beatriz Lima"],
-    createdAt: new Date(Date.now() - 43200000).toISOString(),
-    updatedAt: new Date(Date.now() - 43200000).toISOString()
-  }
-];
-
-function loadRSVPs(): RSVPRecord[] {
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      const raw = fs.readFileSync(DATA_FILE, "utf-8");
-      return JSON.parse(raw);
-    }
-  } catch (err) {
-    console.error("Error reading RSVP file, using initial data:", err);
-  }
-  saveRSVPs(INITIAL_RSVPS);
-  return INITIAL_RSVPS;
-}
-
-function saveRSVPs(rsvps: RSVPRecord[]) {
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(rsvps, null, 2), "utf-8");
-  } catch (err) {
-    console.error("Error saving RSVPs to file:", err);
-  }
-}
-
-let rsvpStore: RSVPRecord[] = loadRSVPs();
-
 function normalizeName(name: string): string {
   return name.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
@@ -94,22 +36,26 @@ async function startServer() {
   app.use(express.json());
 
   // API Routes
-  app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", count: rsvpStore.length });
+  app.get("/api/health", async (req, res) => {
+    const snapshot = await rsvpCollection.get();
+    res.json({ status: "ok", count: snapshot.size });
   });
 
   // Get all RSVPs & Stats
-  app.get("/api/rsvp", (req, res) => {
-    const totalResponses = rsvpStore.length;
-    const attendingCount = rsvpStore.filter(r => r.attending).length;
-    const declinedCount = rsvpStore.filter(r => !r.attending).length;
-    const totalCompanionsCount = rsvpStore
+  app.get("/api/rsvp", async (req, res) => {
+    const snapshot = await rsvpCollection.get();
+    const rsvps = snapshot.docs.map(doc => doc.data() as RSVPRecord);
+    
+    const totalResponses = rsvps.length;
+    const attendingCount = rsvps.filter(r => r.attending).length;
+    const declinedCount = rsvps.filter(r => !r.attending).length;
+    const totalCompanionsCount = rsvps
       .filter(r => r.attending)
       .reduce((acc, r) => acc + (r.companions ? r.companions.length : 0), 0);
     const totalGuestsAndCompanions = attendingCount + totalCompanionsCount;
 
     res.json({
-      rsvps: rsvpStore,
+      rsvps,
       stats: {
         totalResponses,
         attendingCount,
@@ -121,18 +67,22 @@ async function startServer() {
   });
 
   // Check if name already exists
-  app.get("/api/rsvp/check", (req, res) => {
+  app.get("/api/rsvp/check", async (req, res) => {
     const name = req.query.name as string;
     if (!name) {
       return res.status(400).json({ error: "Nome não fornecido" });
     }
     const norm = normalizeName(name);
-    const existing = rsvpStore.find(r => normalizeName(r.guestName) === norm);
+    
+    const snapshot = await rsvpCollection.get();
+    const rsvps = snapshot.docs.map(doc => doc.data() as RSVPRecord);
+    const existing = rsvps.find(r => normalizeName(r.guestName) === norm);
+    
     res.json({ exists: !!existing, rsvp: existing || null });
   });
 
   // Submit or update RSVP
-  app.post("/api/rsvp", (req, res) => {
+  app.post("/api/rsvp", async (req, res) => {
     console.log("RSVP Submission received:", JSON.stringify(req.body, null, 2));
     const { guestName, attending, hasCompanions, companions, phone, message } = req.body;
 
@@ -143,7 +93,9 @@ async function startServer() {
 
     const trimmedName = guestName.trim();
     const norm = normalizeName(trimmedName);
-    const existingIndex = rsvpStore.findIndex(r => normalizeName(r.guestName) === norm);
+    
+    const snapshot = await rsvpCollection.get();
+    const existingDoc = snapshot.docs.find(doc => normalizeName((doc.data() as RSVPRecord).guestName) === norm);
 
     const cleanedCompanions = Array.isArray(companions)
       ? companions.map((c: string) => String(c).trim()).filter((c: string) => c.length > 0)
@@ -151,20 +103,21 @@ async function startServer() {
 
     const now = new Date().toISOString();
 
-    if (existingIndex >= 0) {
+    if (existingDoc) {
       // Update existing
+      const existingData = existingDoc.data() as RSVPRecord;
       const updated: RSVPRecord = {
-        ...rsvpStore[existingIndex],
+        ...existingData,
         guestName: trimmedName,
         attending: Boolean(attending),
         hasCompanions: Boolean(hasCompanions && cleanedCompanions.length > 0),
         companions: Boolean(attending) ? cleanedCompanions : [],
         updatedAt: now,
-        phone: phone ? String(phone).trim() : rsvpStore[existingIndex].phone,
-        message: message ? String(message).trim() : rsvpStore[existingIndex].message
+        phone: phone ? String(phone).trim() : existingData.phone,
+        message: message ? String(message).trim() : existingData.message
       };
-      rsvpStore[existingIndex] = updated;
-      saveRSVPs(rsvpStore);
+      
+      await existingDoc.ref.update(updated);
       return res.json({ success: true, isUpdate: true, rsvp: updated });
     } else {
       // Create new
@@ -179,19 +132,20 @@ async function startServer() {
         phone: phone ? String(phone).trim() : undefined,
         message: message ? String(message).trim() : undefined
       };
-      rsvpStore.unshift(newRecord);
-      saveRSVPs(rsvpStore);
+      
+      await rsvpCollection.doc(newRecord.id).set(newRecord);
       return res.status(201).json({ success: true, isUpdate: false, rsvp: newRecord });
     }
   });
 
   // Delete RSVP
-  app.delete("/api/rsvp/:id", (req, res) => {
+  app.delete("/api/rsvp/:id", async (req, res) => {
     const { id } = req.params;
-    const initialLen = rsvpStore.length;
-    rsvpStore = rsvpStore.filter(r => r.id !== id);
-    if (rsvpStore.length < initialLen) {
-      saveRSVPs(rsvpStore);
+    const docRef = rsvpCollection.doc(id);
+    const doc = await docRef.get();
+    
+    if (doc.exists) {
+      await docRef.delete();
       res.json({ success: true, message: "Confirmação removida com sucesso." });
     } else {
       res.status(404).json({ error: "Registro não encontrado." });
@@ -199,9 +153,12 @@ async function startServer() {
   });
 
   // Export CSV
-  app.get("/api/rsvp/export", (req, res) => {
+  app.get("/api/rsvp/export", async (req, res) => {
+    const snapshot = await rsvpCollection.get();
+    const rsvps = snapshot.docs.map(doc => doc.data() as RSVPRecord);
+    
     let csv = "ID,Convidado,Status,Acompanhantes,Total Pessoas,Data de Confirmação,Mensagem\n";
-    for (const r of rsvpStore) {
+    for (const r of rsvps) {
       const status = r.attending ? "Confirmado (SIM)" : "Não poderá ir (NÃO)";
       const compList = r.companions && r.companions.length > 0 ? `"${r.companions.join("; ")}"` : '""';
       const totalPeople = r.attending ? 1 + (r.companions?.length || 0) : 0;

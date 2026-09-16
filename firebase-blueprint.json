@@ -1,0 +1,27 @@
+{
+  "entities": {
+    "RSVP": {
+      "title": "RSVP",
+      "description": "RSVP record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "guestName": { "type": "string" },
+        "attending": { "type": "boolean" },
+        "hasCompanions": { "type": "boolean" },
+        "companions": { "type": "array" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "phone": { "type": "string" },
+        "message": { "type": "string" }
+      },
+      "required": ["id", "guestName", "attending", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/rsvps/{rsvpId}": {
+      "schema": "RSVP",
+      "description": "RSVP collection"
+    }
+  }
+}
