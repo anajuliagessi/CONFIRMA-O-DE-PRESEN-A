@@ -197,8 +197,8 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ onRSVPSubmitted }) => {
       }
     } catch (err: unknown) {
       const e = err as Error;
-      console.error(e);
-      setErrorMessage('Houve uma falha ao registrar sua resposta. Tente novamente.');
+      console.error('Detailed RSVP submission error:', e);
+      setErrorMessage(`Houve uma falha ao registrar sua resposta: ${e.message}`);
     } finally {
       setIsSubmitting(false);
     }
