@@ -19,6 +19,8 @@ import {
   Edit3
 } from 'lucide-react';
 import { RSVP, StepState } from '../types';
+import { db } from '../lib/firebase';
+import { collection, addDoc, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 
 interface RSVPFormProps {
   onRSVPSubmitted?: (rsvp: RSVP) => void;
@@ -41,22 +43,28 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ onRSVPSubmitted }) => {
   const [existingRecord, setExistingRecord] = useState<RSVP | null>(null);
   const [showExistingNotice, setShowExistingNotice] = useState(false);
 
+  const normalizeName = (name: string): string => {
+    return name.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  };
+
   // Check if guest name already RSVP'd when leaving step 1
   const checkDuplicateName = async (nameToCheck: string) => {
     try {
-      const res = await fetch(`/api/rsvp/check?name=${encodeURIComponent(nameToCheck.trim())}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.exists && data.rsvp) {
-          setExistingRecord(data.rsvp);
-          setShowExistingNotice(true);
-        } else {
-          setExistingRecord(null);
-          setShowExistingNotice(false);
-        }
+      const q = query(collection(db, 'rsvps'));
+      const snapshot = await getDocs(q);
+      
+      const norm = normalizeName(nameToCheck);
+      const existing = snapshot.docs.find(d => normalizeName(d.data().guestName) === norm);
+      
+      if (existing) {
+        setExistingRecord({ ...existing.data(), id: existing.id } as RSVP);
+        setShowExistingNotice(true);
+      } else {
+        setExistingRecord(null);
+        setShowExistingNotice(false);
       }
-    } catch {
-      // Ignore network errors on check
+    } catch (e) {
+      console.error("Error checking RSVP:", e);
     }
   };
 
@@ -154,36 +162,31 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ onRSVPSubmitted }) => {
     setIsSubmitting(true);
     setErrorMessage('');
 
-    const payload = {
+    const now = new Date().toISOString();
+    
+    const rsvpData = {
       guestName: guestName.trim(),
       attending: Boolean(attending),
       hasCompanions: Boolean(hasCompanions && companionsList.length > 0),
       companions: attending ? companionsList : [],
-      message: message.trim() || undefined
+      message: message.trim() || '',
+      updatedAt: now,
     };
-
-    console.log("Submitting payload:", JSON.stringify(payload));
-    
-    // Usa a variável VITE_API_BASE_URL se estiver definida, caso contrário assume o caminho relativo
-    const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
     
     try {
-      const response = await fetch(`${API_BASE_URL}/api/rsvp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Erro ao enviar confirmação.');
+      if (existingRecord) {
+        // Update
+        const rsvpDoc = doc(db, 'rsvps', existingRecord.id);
+        await updateDoc(rsvpDoc, { ...rsvpData, createdAt: existingRecord.createdAt });
+        setSubmittedRSVP({ ...existingRecord, ...rsvpData });
+      } else {
+        // Create
+        const newDoc = await addDoc(collection(db, 'rsvps'), { ...rsvpData, createdAt: now });
+        setSubmittedRSVP({ ...rsvpData, id: newDoc.id, createdAt: now } as RSVP);
       }
 
-      const result = await response.json();
-      setSubmittedRSVP(result.rsvp);
-
       if (onRSVPSubmitted) {
-        onRSVPSubmitted(result.rsvp);
+        onRSVPSubmitted(submittedRSVP || (rsvpData as RSVP));
       }
 
       if (attending) {
@@ -194,7 +197,8 @@ export const RSVPForm: React.FC<RSVPFormProps> = ({ onRSVPSubmitted }) => {
       }
     } catch (err: unknown) {
       const e = err as Error;
-      setErrorMessage(e.message || 'Houve uma falha ao registrar sua resposta. Tente novamente.');
+      console.error(e);
+      setErrorMessage('Houve uma falha ao registrar sua resposta. Tente novamente.');
     } finally {
       setIsSubmitting(false);
     }
