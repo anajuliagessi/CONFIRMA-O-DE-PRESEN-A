@@ -16,6 +16,8 @@ import {
   Heart,
   MessageSquare
 } from 'lucide-react';
+import { db } from '../lib/firebase';
+import { collection, getDocs, deleteDoc, doc, query } from 'firebase/firestore';
 import { RSVP, RSVPStats } from '../types';
 
 interface OrganizerModalProps {
@@ -42,24 +44,31 @@ export const OrganizerModal: React.FC<OrganizerModalProps> = ({ isOpen, onClose 
   const [copiedSummary, setCopiedSummary] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
-  // Fetch RSVPs from API
+  // Fetch RSVPs from Firestore
   const fetchRSVPs = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/rsvp');
-      if (res.ok) {
-        const data = await res.json();
-        setRsvps(data.rsvps || []);
-        setStats(data.stats || {
-          totalResponses: 0,
-          attendingCount: 0,
-          declinedCount: 0,
-          totalCompanionsCount: 0,
-          totalGuestsAndCompanions: 0
-        });
-      }
+      const q = query(collection(db, 'rsvps'));
+      const snapshot = await getDocs(q);
+      const rsvpsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as RSVP));
+      setRsvps(rsvpsData);
+      
+      // Calculate Stats
+      const statsData = {
+        totalResponses: rsvpsData.length,
+        attendingCount: rsvpsData.filter(r => r.attending).length,
+        declinedCount: rsvpsData.filter(r => !r.attending).length,
+        totalCompanionsCount: rsvpsData
+          .filter(r => r.attending)
+          .reduce((acc, r) => acc + (r.companions ? r.companions.length : 0), 0),
+        totalGuestsAndCompanions: rsvpsData.filter(r => r.attending).length + rsvpsData
+          .filter(r => r.attending)
+          .reduce((acc, r) => acc + (r.companions ? r.companions.length : 0), 0)
+      };
+      setStats(statsData);
+      
     } catch (err) {
-      console.error('Error fetching RSVPs:', err);
+      console.error('Error fetching RSVPs from Firestore:', err);
     } finally {
       setIsLoading(false);
     }
@@ -88,12 +97,10 @@ export const OrganizerModal: React.FC<OrganizerModalProps> = ({ isOpen, onClose 
   // Delete RSVP
   const handleDeleteRSVP = async (id: string) => {
     try {
-      const res = await fetch(`/api/rsvp/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        setRsvps(prev => prev.filter(r => r.id !== id));
-        fetchRSVPs();
-        setDeleteConfirmId(null);
-      }
+      await deleteDoc(doc(db, 'rsvps', id));
+      setRsvps(prev => prev.filter(r => r.id !== id));
+      fetchRSVPs();
+      setDeleteConfirmId(null);
     } catch (err) {
       console.error('Failed to delete RSVP:', err);
     }

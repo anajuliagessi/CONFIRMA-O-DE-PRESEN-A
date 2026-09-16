@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { RSVP, StepState } from '../types';
 import { db } from '../lib/firebase';
-import { collection, addDoc, query, where, getDocs, updateDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, query, getDocs, updateDoc, doc } from 'firebase/firestore';
 
 interface RSVPFormProps {
   onRSVPSubmitted?: (rsvp: RSVP) => void;
